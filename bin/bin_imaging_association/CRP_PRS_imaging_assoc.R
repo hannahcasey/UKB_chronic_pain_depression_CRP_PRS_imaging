@@ -1006,15 +1006,15 @@ for (i in 1:3){
   UKB_inflammation_imaging_covariates_imaging_MD_tracts_outliers_removed$PRS <- scale(UKB_inflammation_imaging_covariates_imaging_MD_tracts_outliers_removed$PRS)
   
   ## Run glm
-  mod <- paste0("PRS ~ ",MD_unilateral_FIDs[i], "+ sex + BMI + assessment_centre_first_imaging + age + age_squared + ICV")
+  mod <- paste0(MD_unilateral_FIDs[i], "~ PRS + sex + BMI + assessment_centre_first_imaging + age + age_squared + ICV")
   glm1 <- glm(as.formula(mod), data = UKB_inflammation_imaging_covariates_imaging_MD_tracts_outliers_removed)
   
   
   lme_MD_values_CRP_PRS_unilateral[i,"region_field_ID"] <- MD_unilateral_FIDs[i]
-  lme_MD_values_CRP_PRS_unilateral[i, "beta"] <- summary(glm1)[["coefficients"]][MD_unilateral_FIDs[i], "Estimate"]
-  lme_MD_values_CRP_PRS_unilateral[i, "std"] <- summary(glm1)[["coefficients"]][MD_unilateral_FIDs[i], "Std. Error"]
-  lme_MD_values_CRP_PRS_unilateral[i, "p.value"] <- summary(glm1)[["coefficients"]][MD_unilateral_FIDs[i], "Pr(>|t|)"]
-  lme_MD_values_CRP_PRS_unilateral[i, c("Lower_95CI", "Upper_95CI")] <- confint(glm1)[MD_unilateral_FIDs[i],]
+  lme_MD_values_CRP_PRS_unilateral[i, "beta"] <- summary(glm1)[["coefficients"]]["PRS", "Estimate"]
+  lme_MD_values_CRP_PRS_unilateral[i, "std"] <- summary(glm1)[["coefficients"]]["PRS", "Std. Error"]
+  lme_MD_values_CRP_PRS_unilateral[i, "p.value"] <- summary(glm1)[["coefficients"]]["PRS", "Pr(>|t|)"]
+  lme_MD_values_CRP_PRS_unilateral[i, c("Lower_95CI", "Upper_95CI")] <- confint(glm1)["PRS",]
   lme_MD_values_CRP_PRS_unilateral[i, "p.value.adjust"] <- p.adjust(lme_MD_values_CRP_PRS_unilateral[i, "p.value"], method = "fdr", n = 15)
   
   MD_value <- UKB_MD_key$MD_value[grepl(substring(lme_MD_values_CRP_PRS_unilateral$region_field_ID[i], 3,7), UKB_MD_key$feild_ID)]
@@ -1368,7 +1368,7 @@ ls.mod.CRP_PRS.area <- data.frame(Dep ="Volume",
 lme_subcortical_volume_CRP_PRS<- data.frame(mod_name=character(), beta=numeric(), std=numeric(), t.value=numeric(), p.value=numeric(),
                                           Lower_95CI=numeric(), Upper_95CI=numeric())
 
-## Iterate through each cortical volume and run glm 
+## Iterate through each cortical volume and run lme 
 for (i in seq(1,14,2)){
   
   ## Remove outliers - IQR method
