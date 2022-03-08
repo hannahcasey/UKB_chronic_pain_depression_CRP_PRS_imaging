@@ -13,6 +13,7 @@ library(ggplot2)
 library(patchwork)
 library(stringr)
 library(nlme)
+library(tidyr)
 
 ## Set working directory
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,28 +30,35 @@ source("func/lme_Shen.R")
 ## Load dataframe containing markers of inflammation, imaging features of interest and covariates
 UKB_inflammation_imaging_covariates <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_inflammation_imaging_covariates.csv", header = TRUE)
 
+## Scale ICV
+UKB_inflammation_imaging_covariates$ICV <- scale(UKB_inflammation_imaging_covariates$ICV)
+
+## Remove participants with missing values in PRS and covariate measures
+UKB_inflammation_imaging_covariates_no_NA <- UKB_inflammation_imaging_covariates %>%
+  drop_na(PRS, age_squared, ICV, assessment_centre_first_imaging, BMI, sex)
+
 ## Load in UKB DKW field ID key file
-UKB_cortical_region_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_cortical_region_field_IDs.csv", header = F)
+UKB_cortical_region_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_imaging_keys/UKB_cortical_region_field_IDs.csv", header = F)
 UKB_cortical_region_key <- UKB_cortical_region_key %>%
   rename(feild_ID = V1,
          cortical_volume = V2)
 
 ## Load in UKB FA field ID key file
-UKB_FA_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_FA_field_IDs.csv", header = F)
+UKB_FA_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_imaging_keys/UKB_FA_field_IDs.csv", header = F)
 UKB_FA_key <- UKB_FA_key %>%
   rename(feild_ID = V1,
          FA_value = V2)
 
 
 ## Load in UKB FA field ID key file
-UKB_MD_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_MD_field_IDs.csv", header = F)
+UKB_MD_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_imaging_keys/UKB_MD_field_IDs.csv", header = F)
 UKB_MD_key <- UKB_MD_key %>%
   rename(feild_ID = V1,
          MD_value = V2)
 
 
 ## Load in UKB FIRST subcortical field ID key file
-UKB_subcortical_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_subcortical_field_IDs.csv", header = F)
+UKB_subcortical_key <- read.csv("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_imaging_keys/UKB_subcortical_field_IDs.csv", header = F)
 UKB_subcortical_key <- UKB_subcortical_key %>%
   rename(feild_ID = V1,
          subcortical_volume = V2)
@@ -122,7 +130,7 @@ p1 <- ggplot(data=glm_CRP_PRS_cortical_volume[!glm_CRP_PRS_cortical_volume$corti
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() + # use a white background
-  ylim(-14000,14000) +
+  ylim(-0.015,0.015) +
   labs(title ="Association of CRP PRS and General Cortical Volumes") + 
   scale_x_discrete(labels=c("frontal_lobe" = "Frontal Lobe", "temporal_lobe" = "Temporal Lobe","parietal_lobe" = "Parietal Lobe", "occipital_lobe" = "Occipital Lobe", "cingulate_lobe" = "Cingulate Lobe"))
 
@@ -132,7 +140,7 @@ p2 <- ggplot(data=glm_CRP_PRS_cortical_volume[glm_CRP_PRS_cortical_volume$cortic
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() +  # use a white background
-  ylim(-8000,8000) +
+  ylim(-0.01,0.01) +
   labs(title ="Association of CRP PRS and Global Cortical Volume") +
   scale_x_discrete(labels=c("global_cortical_volume" = "Global"))
 
@@ -216,7 +224,7 @@ p1 <- ggplot(data=glm_CRP_PRS_cortical_area[!glm_CRP_PRS_cortical_area$cortical_
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() + # use a white background
-  ylim(-15000,15000) +
+  ylim(-0.012,0.012) +
   labs(title ="Association of CRP PRS and General Cortical areas") + 
   scale_x_discrete(labels=c("frontal_lobe_area" = "Frontal Lobe", "temporal_lobe_area" = "Temporal Lobe","parietal_lobe_area" = "Parietal Lobe", "occipital_lobe_area" = "Occipital Lobe", "cingulate_lobe_area" = "Cingulate Lobe"))
 
@@ -226,7 +234,7 @@ p2 <- ggplot(data=glm_CRP_PRS_cortical_area[glm_CRP_PRS_cortical_area$cortical_a
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() +  # use a white background
-  ylim(-5500,5500) +
+  ylim(-0.005,0.005) +
   labs(title ="Association of CRP PRS and Global Cortical area") +
   scale_x_discrete(labels=c("global_cortical_area" = "Global"))
 
@@ -393,18 +401,18 @@ lme_cortical_volume_CRP_PRS <- data.frame(mod_name=character(), beta=numeric(), 
 ## Generate ls.mod
 ls.mod.PRS <- data.frame(Dep ="Volume",
                          Factor =  "PRS",
-                         Covariates = "sex + age + age_squared + BMI + ICV + assessment_centre_first_imaging + Hemisphere",
+                         Covariates = "sex + BMI + assessment_centre_first_imaging + Hemisphere",
                          Model = "lme")
-
+## age  + ICV + age_squared
 ## Iterate through each cortical volume and run lme 
 for (i in 1:33){
   
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_volume_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,cortical_volume_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_volume_FIDs[i +33]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_volume_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,cortical_volume_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_volume_FIDs[i +33]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed[-which(UKB_inflammation_imaging_covariates_cortical_volume_outliers_removed[,cortical_volume_FIDs[i+33]] %in% outliers),]
   
   
@@ -428,7 +436,7 @@ for (i in 1:33){
   ## Generate ls.mode
   
   ## Rum lme and get output (BTEA, SD, T, P, 95% CIs)
-  output <- run_model(ls.mod.PRS, UKB_inflammation_imaging_covariates_imaging_small, UKB_inflammation_imaging_covariates_imaging_small_long)
+  output <- try(run_model(ls.mod.PRS, UKB_inflammation_imaging_covariates_imaging_small, UKB_inflammation_imaging_covariates_imaging_small_long))
   ## Add region field ID
   lme_cortical_region_iterate_CRP_PRS <- cbind(data_frame(region_field_ID = paste0(cortical_volume_FIDs[i],"_",cortical_volume_FIDs[i + 33])), output)
   ## Adjust P value for multiple comparisons (FDR)
@@ -456,6 +464,7 @@ ggplot(data=lme_cortical_volume_CRP_PRS, aes(x=cortical_volume, y=beta, ymin=Low
   labs(title = "Association of CRP PRS and Regional Cortical Volumes")
 
 dev.off()
+
 
 write.csv(lme_cortical_volume_CRP_PRS, "~/Desktop/PhD/projects/UKB_inflammation_imaging/output/PRS_imaging_association/lme_cortical_volume.csv",
           quote = FALSE, row.names = FALSE)
@@ -522,10 +531,10 @@ ls.mod.CRP_PRS.area <- data.frame(Dep ="area",
 for (i in 1:33){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_area_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_cortical_area_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_cortical_area_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,cortical_area_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_area_FIDs[i +33]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_area_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_cortical_area_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_cortical_area_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,cortical_area_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_area_FIDs[i +33]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_cortical_area_outliers_removed <- UKB_inflammation_imaging_covariates_cortical_area_outliers_removed[-which(UKB_inflammation_imaging_covariates_cortical_area_outliers_removed[,cortical_area_FIDs[i+33]] %in% outliers),]
   
   ## Select essential columns
@@ -641,10 +650,10 @@ ls.mod.CRP_PRS.thickness <- data.frame(Dep ="thickness",
 for (i in 1:33){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_thickness_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,cortical_thickness_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,cortical_thickness_FIDs[i +33]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_thickness_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,cortical_thickness_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,cortical_thickness_FIDs[i +33]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed <- UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed[-which(UKB_inflammation_imaging_covariates_cortical_thickness_outliers_removed[,cortical_thickness_FIDs[i+33]] %in% outliers),]
   
   ## Select essential columns
@@ -713,10 +722,10 @@ interaction_CRP_PRS_hemisphere_FA <- data.frame(Volume=character(),  interaction
 for (i in seq(1, 23, by=2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i +1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i +1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed[-which(UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed[,FA_bilateral_FIDs[i+1]] %in% outliers),]
   
   ## Select essential columns
@@ -763,10 +772,10 @@ ls.mod.CRP_PRS <- data.frame(Dep ="FA",
 for (i in seq(1, 23, by=2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,FA_bilateral_FIDs[i +1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,FA_bilateral_FIDs[i +1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed[-which(UKB_inflammation_imaging_covariates_FA_tracts_outliers_removed[,FA_bilateral_FIDs[i+1]] %in% outliers),]
   
   ## Select essential columns
@@ -812,12 +821,12 @@ glm_FA_values_CRP_PRS_unilateral <- data.frame(region_field_ID=character(), beta
 for (i in 1:3){
   
   ## Scale FA value in unilateral tracts
-  UKB_inflammation_imaging_covariates[,FA_unilateral_FIDs[i]] <- scale(UKB_inflammation_imaging_covariates[,FA_unilateral_FIDs[i]])
+  UKB_inflammation_imaging_covariates_no_NA[,FA_unilateral_FIDs[i]] <- scale(UKB_inflammation_imaging_covariates_no_NA[,FA_unilateral_FIDs[i]])
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,FA_unilateral_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,FA_unilateral_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,FA_unilateral_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,FA_unilateral_FIDs[i]] %in% outliers),]
   
   ## Scale CRP PRS (general imaging measure already scaled in file prep script)
   UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed$PRS <- scale(UKB_inflammation_imaging_covariates_FA_unilateral_outliers_removed$PRS)
@@ -848,7 +857,7 @@ p1 <- ggplot(data=lme_FA_values_CRP_PRS, aes(x=FA_tract, y=beta, ymin=Lower_95CI
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("Bilateral FA Tracts") + ylab("Mean (95% CI)") +
   theme_bw() +
-  ylim(-0.03, 0.03) +
+  ylim(-0.02, 0.02) +
   labs(title ="Association of CRP PRS and FA Bilateral Tracts")
 
 
@@ -865,7 +874,7 @@ p2 <- ggplot(data=glm_FA_values_CRP_PRS_unilateral, aes(x=FA_tract, y=beta, ymin
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("Unilateral FA Tracts") + ylab("Mean (95% CI)") +
   theme_bw() +
-  ylim(-30000, 2.5e-08) +
+  ylim(-0.02, 0.02) +
   labs(title ="Association of CRP PRS and FA Unilateral Tracts")
 
 layout <- c(
@@ -894,10 +903,10 @@ interaction_CRP_PRS_hemisphere_MD <- data.frame(MD_measurement=character(),  int
 for (i in seq(1, 23, by=2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i +1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i +1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed[-which(UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed[,MD_bilateral_FIDs[i+1]] %in% outliers),]
   
   
@@ -946,10 +955,10 @@ ls.mod.CRP_PRS <- data.frame(Dep ="MD",
 for (i in seq(1, 23, by=2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,MD_bilateral_FIDs[i +1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,MD_bilateral_FIDs[i +1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed <- UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed[-which(UKB_inflammation_imaging_covariates_MD_tracts_outliers_removed[,MD_bilateral_FIDs[i+1]] %in% outliers),]
   
   ## Select essential columns
@@ -1047,7 +1056,7 @@ p2 <- ggplot(data=lme_MD_values_CRP_PRS_unilateral, aes(x=MD_tract, y=beta, ymin
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("Unilateral MD Tracts") + ylab("Mean (95% CI)") +
   theme_bw() +
-  ylim(-3e-08, 3e-08) +
+  ylim(-0.03, 0.03) +
   labs(title ="Association of CRP PRS and MD Unilateral Tracts")
 
 layout <- c(
@@ -1079,21 +1088,21 @@ glm_CRP_PRS_MD_general <- data.frame(general_DTI_MD_measure=character(), beta=nu
 
 
 ## Remove outliers - IQR method
-outliers <- boxplot(UKB_inflammation_imaging_covariates$global_MD, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_global_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_global_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$global_MD %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$global_MD, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_global_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_global_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$global_MD %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$association_fibres_MD, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_assoc_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_assoc_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$association_fibres_MD %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$association_fibres_MD, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_assoc_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_assoc_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$association_fibres_MD %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$thalamic_radiations_MD, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_tr_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_tr_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$thalamic_radiations_MD %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$thalamic_radiations_MD, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_tr_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_tr_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$thalamic_radiations_MD %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$projection_fibres_MD, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_projec_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_projec_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$projection_fibres_MD %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$projection_fibres_MD, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_projec_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_projec_MD_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$projection_fibres_MD %in% outliers),]
 
 
 ## Scale CRP PRS (general imaging measure already scaled in file prep script)
@@ -1164,7 +1173,7 @@ p1 <- ggplot(data=glm_CRP_PRS_MD_general[!glm_CRP_PRS_MD_general$general_DTI_MD_
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() + # use a white background
-  ylim(-50000,50000) +
+  ylim(-0.04,0.04) +
   labs(title ="Association of General MD Measures and CRP PRS") +
   scale_x_discrete(labels=c("association_fibres_MD" = "Association Fibres", "thalamic_radiations_MD" = "Thalamic Radiations",
                             "projection_fibres_MD" = "Projection Fibres"))
@@ -1175,7 +1184,7 @@ p2 <- ggplot(data=glm_CRP_PRS_MD_general[glm_CRP_PRS_MD_general$general_DTI_MD_m
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() +  # use a white background
-  ylim(-60000,60000) +
+  ylim(-0.05,0.05) +
   labs(title ="Association of Global MD and CRP PRS") +
   scale_x_discrete(labels=c("global_MD" = "Global"))
 
@@ -1200,21 +1209,21 @@ glm_CRP_PRS_FA_general <- data.frame(general_DTI_FA_measure=character(), beta=nu
 
 
 ## Remove outliers - IQR method
-outliers <- boxplot(UKB_inflammation_imaging_covariates$global_FA, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$global_FA %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$global_FA, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$global_FA %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$association_fibres_FA, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_assoc_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_assoc_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$association_fibres_FA %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$association_fibres_FA, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_assoc_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_assoc_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$association_fibres_FA %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$thalamic_radiations_FA, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_tr_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_tr_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$thalamic_radiations_FA %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$thalamic_radiations_FA, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_tr_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_tr_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$thalamic_radiations_FA %in% outliers),]
 
-outliers <- boxplot(UKB_inflammation_imaging_covariates$projection_fibres_FA, plot=FALSE)$out
-UKB_inflammation_imaging_covariates_projec_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates
-UKB_inflammation_imaging_covariates_projec_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates$projection_fibres_FA %in% outliers),]
+outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA$projection_fibres_FA, plot=FALSE)$out
+UKB_inflammation_imaging_covariates_projec_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+UKB_inflammation_imaging_covariates_projec_FA_PC_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA$projection_fibres_FA %in% outliers),]
 
 ## Scale CRP PRS (general imaging measure already scaled in file prep script)
 UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed$PRS <- scale(UKB_inflammation_imaging_covariates_global_FA_PC_outliers_removed$PRS)
@@ -1283,7 +1292,7 @@ p1 <- ggplot(data=glm_CRP_PRS_FA_general[!glm_CRP_PRS_FA_general$general_DTI_FA_
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() + # use a white background
-  ylim(-50000,50000) +
+  ylim(-0.05,0.05) +
   labs(title ="General FA Measures") +
   labs(title ="Association of General FA Measures and CRP PRS") +
   scale_x_discrete(labels=c("association_fibres_FA" = "Association Fibres", "thalamic_radiations_FA" = "Thalamic Radiations",
@@ -1295,7 +1304,7 @@ p2 <- ggplot(data=glm_CRP_PRS_FA_general[glm_CRP_PRS_FA_general$general_DTI_FA_m
   coord_flip() +  # flip coordinates (puts labels on y axis)
   xlab("") + ylab("Mean (95% CI)") +
   theme_bw() +  # use a white background
-  ylim(-60000,60000) +
+  ylim(-0.06,0.06) +
   labs(title ="Global FA") +
   labs(title ="Association of Global FA and CRP PRS")  +
   scale_x_discrete(labels=c("global_FA" = "Global"))
@@ -1319,11 +1328,11 @@ sub_cortical_volume_FIDs <- paste0("f.", c(25011:25024), ".2.0")
 for (i in seq(1,14,2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i]] %in% outliers),]
   
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i + 1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i + 1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed[-which(UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed[,sub_cortical_volume_FIDs[i + 1]] %in% outliers),]
   
   
@@ -1372,10 +1381,10 @@ lme_subcortical_volume_CRP_PRS<- data.frame(mod_name=character(), beta=numeric()
 for (i in seq(1,14,2)){
   
   ## Remove outliers - IQR method
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i]], plot=FALSE)$out
-  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates
-  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates[-which(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i]] %in% outliers),]
-  outliers <- boxplot(UKB_inflammation_imaging_covariates[,sub_cortical_volume_FIDs[i + 1]], plot=FALSE)$out
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i]], plot=FALSE)$out
+  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA
+  UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_no_NA[-which(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i]] %in% outliers),]
+  outliers <- boxplot(UKB_inflammation_imaging_covariates_no_NA[,sub_cortical_volume_FIDs[i + 1]], plot=FALSE)$out
   UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed <- UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed[-which(UKB_inflammation_imaging_covariates_subcortical_volume_outliers_removed[,sub_cortical_volume_FIDs[i + 1]] %in% outliers),]
   
   
@@ -1402,7 +1411,7 @@ for (i in seq(1,14,2)){
   
   
   ## Rum lme and get output (BTEA, SD, T, P, 95% CIs)
-  output <- try(run_model(ls.mod.CRP_PRS.volume, UKB_inflammation_imaging_covariates_imaging_small, UKB_inflammation_imaging_covariates_imaging_small_long))
+  output <- try(run_model(ls.mod.CRP_PRS.area, UKB_inflammation_imaging_covariates_imaging_small, UKB_inflammation_imaging_covariates_imaging_small_long))
   ## Add region field ID
   lme_cortical_region_iterate_CRP_PRS <- cbind(data_frame(region_field_ID = paste0(sub_cortical_volume_FIDs[i],"_",sub_cortical_volume_FIDs[i + 33])), output)
   ## Adjust P value for multiple comparisons (FDR)

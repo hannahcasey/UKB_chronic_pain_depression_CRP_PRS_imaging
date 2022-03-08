@@ -8,13 +8,13 @@ library(rebus) #to build regular expressions
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Load in CRP polygenic risk scores for UKB participants
 ## More information on PRS calculation: <github link>
-UKB_CRP_PRS <- read.table("~/Desktop/PhD/projects/UKB_inflammation_imaging//output/PRS_analysis/CRP_PRS_SBayesR_noMHC.best", header = T)
+UKB_CRP_PRS <- read.table("~/Desktop/PhD/projects/UKB_inflammation_imaging/output/SBayesR_CRP/CRP_log_PRS_noMHC_SBayesR.best", header = T)
 
 ## Rename ID column
 UKB_CRP_PRS <- UKB_CRP_PRS %>%
   rename(f.eid = FID)
 
-## Load in phenotypic serum CRP measures
+## Load in serum CRP measures
 ## Load in assay data
 UKB_assay_results <- readRDS("/Volumes/GenScotDepression/data/ukb/phenotypes/fields/2020-09-phenotypes-ukb43743/AssayResults.rds")
 ## f.30710 = C-reactive protein
@@ -67,7 +67,7 @@ UKB_sex_age <- UKB_sex_age %>%
          age = f.21022.0.0)
 
 ## Create new variable, age^2
-UKB_sex_age$age_squared <- (UKB_baseline_characteristics_filtered$age^2)
+UKB_sex_age$age_squared <- (UKB_sex_age$age^2)
 
 ## Remove redundant dataframes 
 rm(UKB_baseline_characteristics)

@@ -16,7 +16,7 @@ UKBAssayResultsCRP <- UKBAssayResultsCRP %>%
 
 
 ## load in final QC fam file 
-FAM <- read.table("~/Desktop/PhD/projects/UKBCRPImagingPRS/resources/ukb_imp_v3.qc.fam", header = F)
+FAM <- read.table("~/Desktop/PhD/projects/UKB_inflammation_imaging/resources//ukb_imp_v3.qc.fam", header = F)
 
 ## rename FID and IID columns
 FAM <- FAM %>%
@@ -34,5 +34,11 @@ UKB_CRP_imaging.pheno <- UKB_CRP_imaging.pheno[c("FID", "IID", "CRP")]
 ## remove participants w/o CRP measurment
 UKB_CRP_imaging.pheno <- na.omit(UKB_CRP_imaging.pheno)
 
+## remove participants w/o CRP measurment
+UKB_CRP_log_imaging.pheno <- UKB_CRP_imaging.pheno %>%
+  mutate(CRP_log = log(CRP)) %>%
+  select(FID, IID, CRP_log)
+
 ## write to resource directory
-write.table(UKB_CRP_imaging.pheno, "~/Desktop/PhD/projects/UKBCRPImagingPRS/resources/UKB_CRP_imaging.pheno", row.names = FALSE, quote = FALSE)
+write.table(UKB_CRP_imaging.pheno, "~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_CRP_imaging.pheno", row.names = FALSE, quote = FALSE)
+write.table(UKB_CRP_log_imaging.pheno, "~/Desktop/PhD/projects/UKB_inflammation_imaging/resources/UKB_CRP_log_imaging.pheno", row.names = FALSE, quote = FALSE)
