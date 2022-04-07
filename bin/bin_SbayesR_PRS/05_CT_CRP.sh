@@ -29,7 +29,7 @@ Rscript /exports/igmm/eddie/GenScotDepression/users/hcasey/packages/PRSice.v2.3.
     --snp SNP \
     --stat b \
     --binary-target F\
-    --pheno-file $DIR/resources/UKB_CRP_imaging.pheno \
+    --pheno-file $DIR/resources/UKB_CRP_log_imaging.pheno \
     --cov-file $DIR/resources/UKB_CRP_imaging.cov \
     --fastscore \
     --bar-levels 0.001,0.05,0.1,0.2,0.3,0.4,0.5,1 \
@@ -56,7 +56,7 @@ Rscript /exports/igmm/eddie/GenScotDepression/users/hcasey/packages/PRSice.v2.3.
     --snp SNP \
     --stat b \
     --binary-target F\
-    --pheno-file $DIR/resources/UKB_CRP_imaging.pheno \
+    --pheno-file $DIR/resources/UKB_CRP_log_imaging.pheno \
     --cov-file $DIR/resources/UKB_CRP_imaging.cov \
     --fastscore \
     --bar-levels 0.001,0.05,0.1,0.2,0.3,0.4,0.5,1 \

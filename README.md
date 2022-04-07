@@ -19,6 +19,6 @@ Perform association analysis between inflammation marker and imaging features.
 Contains function used in scripts
 
 ### lme_Shen.R
-Function used to perfrom LME modelling
+Function written by Shen used to perfrom LME modelling
 
 
