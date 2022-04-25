@@ -21,7 +21,7 @@ Plot summary of imaging association analysis using manhattan plots
 ## func directory:
 Contains function used in scripts
 
-### lme_Shen.R
+#### lme_Shen.R
 Function written by Shen used to perfrom LME modelling
 
 
