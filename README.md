@@ -15,7 +15,7 @@ Prepare CRP PRS, glycA, covariates and imaging measures into single dataframe
 #### CRP_PRS_imaging_assoc.R
 Perform association analysis between inflammation marker and imaging features.
 
-### CRP_PRS_imaging_association_summary_plots.R
+#### CRP_PRS_imaging_association_summary_plots.R
 Plot summary of imaging association analysis using manhattan plots
 
 ## func directory:
